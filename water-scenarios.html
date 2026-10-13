@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colorado River and California Water Flows: Scenario Model</title>
+<style>
+:root{--text-primary:#1d1d1f;--text-secondary:#4a4f57;--text-muted:#6b7078;--text-accent:#185FA5;
+--border-strong:rgba(0,0,0,.28);--border-accent:#378ADD;--bg-success:#EAF3DE;--border-success:#3B6D11;
+--bg-warning:#FAEEDA;--border-warning:#854F0B;--surface-1:#f5f6f7;--surface-2:#ffffff;--radius:8px;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--text-primary:#ececec;--text-secondary:#b8bcc3;--text-muted:#8d939b;--text-accent:#85B7EB;
+--border-strong:rgba(255,255,255,.3);--border-accent:#85B7EB;--bg-success:#173404;--border-success:#97C459;
+--bg-warning:#412402;--border-warning:#EF9F27;--surface-1:#1f2226;--surface-2:#16181b;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface-2);color:var(--text-primary);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45}
+main{max-width:960px;margin:0 auto;padding:28px 20px 48px}
+h1{font-size:22px;font-weight:600;margin:0 0 4px}
+.sub{font-size:14px;color:var(--text-muted);margin:0 0 20px}
+button{font-family:inherit;padding:6px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--surface-1);color:var(--text-primary);cursor:pointer;line-height:1.3}
+button:hover{border-color:var(--border-accent)}
+button:focus-visible{outline:2px solid var(--border-accent);outline-offset:2px}
+svg{max-width:100%;height:auto}
+</style>
+</head><body><main>
+<h1>Colorado River and California Water Flows</h1>
+<p class="sub">Scenario model. Values in million acre-feet a year.</p>
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Transit-style schematic of Colorado River and California water flows. The Sea of Cortez is fixed at 0.35 maf, surplus is split among Arizona, Imperial and Mexican agriculture, and the Cienega de Santa Clara appears as a wetland sustained by Wellton-Mohawk agricultural drainage.</h2>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px">
+<button class="mb" data-m="0" style="font-size:13px">Paper rights</button>
+<button class="mb" data-m="1" style="font-size:13px">Actual</button>
+<button class="mb" data-m="2" style="font-size:13px">Drought-firm proposal</button>
+<button class="mb" data-m="3" style="font-size:13px">60M dense, 2100s</button>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px">
+<span style="font-size:12px;color:var(--text-secondary)">2100s only:</span>
+<button id="tla" style="font-size:13px">LA Aqueduct &rarr; Imperial ag</button>
+<button id="thh" style="font-size:13px">Hetch Hetchy &rarr; Central Valley ag</button>
+<button id="bc" style="font-size:13px;margin-left:auto">Hide CVP</button>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 6px;font-size:12px;color:var(--text-secondary)">
+<span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:6px;border-radius:3px;background:#D85A30"></span>Colorado River</span>
+<span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:6px;border-radius:3px;background:#378ADD"></span>State Water Project</span>
+<span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:6px;border-radius:3px;background:#7F77DD"></span>Central Valley Project</span>
+<span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:6px;border-radius:3px;background:#1D9E75"></span>LA Aqueduct</span>
+<span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:6px;border-radius:3px;background:#D4537E"></span>Hetch Hetchy</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 2px;font-size:12px;color:var(--text-secondary)">
+<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:var(--bg-success);border:1px solid var(--border-success)"></span>Agriculture</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:var(--bg-warning);border:1px solid var(--border-warning)"></span>Urban</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:var(--surface-1);border:1px dashed var(--border-strong)"></span>Environment</span>
+<span id="dn" style="color:var(--text-muted)"></span>
+</div>
+<div id="map"></div>
+<div id="st" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:12px;margin:14px 0 0"></div>
+<script>
+const C={co:"#D85A30",sw:"#378ADD",cv:"#7F77DD",es:"#1D9E75",hh:"#D4537E"};
+const T={a:["var(--bg-success)","var(--border-success)",""],u:["var(--bg-warning)","var(--border-warning)",""],o:["var(--surface-1)","var(--border-strong)",' stroke-dasharray="5 3.5"']};
+const F=[
+{s:"cv",v:[7000,5600,5600,6000],p:[[200,80],[200,140]]},
+{s:"cv",v:[600,500,500,500],p:[[200,140],[110,140],[80,170]]},
+{s:"cv",v:[6400,5100,5100,5500],p:[[200,140],[200,240]]},
+{s:"cv",v:[1400,1300,1300,1300],p:[[200,240],[280,240]]},
+{s:"cv",v:[5000,3800,3800,4200],p:[[200,240],[200,300],[250,350]]},
+{s:"sw",v:[4133,1859,1900,2100],p:[[140,80],[140,156]]},
+{k:"swpbay",s:"sw",v:[300,166,170,690],p:[[140,156],[85,156]]},
+{k:"swp2",s:"sw",v:[3833,1693,1730,1410],p:[[140,156],[140,300]]},
+{k:"swpcvag",s:"sw",v:[1170,548,700,300],p:[[140,300],[200,360],[240,360]]},
+{s:"sw",v:[2663,1145,1030,1110],p:[[140,300],[140,340]]},
+{s:"sw",v:[71,32,30,50],p:[[140,340],[100,380]]},
+{s:"sw",v:[2592,1113,1000,1060],p:[[140,340],[140,368],[250,478]]},
+{k:"hh",s:"hh",v:[252,190,190,190],p:[[320,180],[200,180],[110,180],[80,150]]},
+{k:"laa",s:"es",v:[185,185,185,185],p:[[420,150],[420,288],[350,358],[350,430],[285,495],[255,495]]},
+{s:"co",v:[9000,8288,6800,5400],p:[[665,55],[640,80],[540,180]]},
+{s:"co",v:[0,0,0,30],p:[[600,120],[560,80]]},
+{s:"co",v:[300,198,200,250],p:[[540,180],[460,100]]},
+{s:"co",v:[8700,7710,6600,5120],p:[[540,180],[540,280]]},
+{s:"co",v:[1500,1000,1000,1230],p:[[540,280],[580,320],[620,360],[620,380]]},
+{s:"co",v:[7200,6710,5600,3890],p:[[540,280],[540,300]]},
+{k:"cra",s:"co",v:[828,1128,1245,2440],p:[[540,300],[460,300],[400,360],[400,440],[330,510],[270,510]]},
+{k:"co3",s:"co",v:[6372,5582,4355,1450],p:[[540,300],[540,400],[500,440]]},
+{k:"impag",s:"co",v:[3572,2842,1900,375],p:[[500,440],[420,520],[420,550]]},
+{s:"co",v:[1300,1290,850,180],p:[[500,440],[555,495],[555,515]]},
+{s:"co",v:[0,110,110,110],p:[[555,515],[600,560],[600,630]]},
+{s:"co",v:[690,400,400,400],p:[[620,380],[555,445],[555,505]]},
+{s:"co",v:[810,600,600,830],p:[[620,380],[620,445]]},
+{s:"co",v:[1500,1450,1605,895],p:[[500,440],[500,560]]},
+{s:"co",v:[1350,1300,1000,375],p:[[500,560],[500,630]]},
+{s:"co",v:[150,150,150,170],p:[[500,560],[540,600]]},
+{s:"co",v:[0,0,455,350],p:[[500,560],[420,640],[400,640]]}];
+const D=[["Bay Area",75,160,[1152,856,860,1190],"middle",0,42,"u"],["Refuges + Delta",280,240,[1400,1300,1300,1300],"start",28,-4,"o"],["Central Valley ag",250,360,[6170,4348,4500,4500],"middle",0,52,"a"],["Central Coast",100,380,[71,32,30,50],"middle",0,18,"u"],["Las Vegas",460,100,[300,198,200,250],"end",-12,-14,"u"],["St. George",560,80,[0,0,0,30],"end",-14,4,"u"],["Urban Southern California",255,495,[3605,2426,2430,3500],"end",-36,-4,"u"],["Phoenix / Tucson",620,445,[810,600,600,830],"middle",0,33,"u"],["Arizona ag",555,515,[1990,1580,1140,470],"start",26,-4,"a"],["Ciénega",600,630,[0,110,110,110],"start",12,-4,"o"],["Imperial + Coachella ag",420,550,[3572,2842,1900,375],"end",-30,-4,"a"],["Mexico ag",500,630,[1350,1300,1000,375],"middle",0,26,"a"],["Mexicali + Tijuana",540,600,[150,150,150,170],"end",-14,-4,"u"],["Sea of Cortez",400,640,[0,0,455,350],"end",-14,-4,"o"]];
+let m=0,cvp=1,LA=1,HH=1;
+const f=n=>{const v=n/1000;return (v>=1?v.toFixed(1):v.toFixed(2))+" maf";};
+const fv=(v,b)=>{let s=f(v);if(m>=2&&v!==b){const d=(v-b)/1000,a=Math.abs(d);s+=" ("+(d>0?"+":"\u2212")+(a>=1?a.toFixed(1):a.toFixed(2))+")";}return s;};
+const R=v=>Math.max(Math.sqrt(v)*.4329,2.4);
+function rp(p,r){let d="M"+p[0];for(let i=1;i<p.length-1;i++){const a=p[i-1],c=p[i],b=p[i+1];
+ const l1=Math.hypot(c[0]-a[0],c[1]-a[1]),l2=Math.hypot(b[0]-c[0],b[1]-c[1]),rr=Math.min(r,l1/2,l2/2);
+ d+="L"+[c[0]+(a[0]-c[0])/l1*rr,c[1]+(a[1]-c[1])/l1*rr]+"Q"+c+" "+[c[0]+(b[0]-c[0])/l2*rr,c[1]+(b[1]-c[1])/l2*rr];}
+ return d+"L"+p[p.length-1];}
+function at(p,fr){const L=[];let A=0;for(let i=1;i<p.length;i++){const q=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);L.push(q);A+=q;}
+ let d=A*fr,i=0;while(i<L.length-1&&d>L[i]){d-=L[i];i++;}
+ const a=p[i],b=p[i+1],t=L[i]?Math.min(d/L[i],1):0;
+ return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI];}
+function val(o){if(m!==3)return o.v[m];const h=HH?190:0,l=LA?185:0;
+ switch(o.k){case"hh":return h;case"laa":return l;case"swpbay":return 690-h;case"swp2":return 1410+h;
+ case"swpcvag":return 300+h;case"cra":return 2440-l;case"co3":return 1450+l;case"impag":return 375+l;
+ default:return o.v[3];}}
+function nval(n){if(m!==3)return n[3][m];const h=HH?190:0,l=LA?185:0;
+ if(n[0]==="Central Valley ag")return 4500+h;
+ if(n[0]==="Imperial + Coachella ag")return 375+l;
+ return n[3][3];}
+function draw(){
+ document.querySelectorAll(".mb").forEach(b=>{const on=+b.dataset.m===m;
+  b.style.borderColor=on?"var(--border-accent)":"var(--border-strong)";b.style.color=on?"var(--text-accent)":"var(--text-primary)";});
+ [["tla",LA],["thh",HH]].forEach(([id,on])=>{const b=document.getElementById(id);
+  b.style.borderColor=on?"var(--border-accent)":"var(--border-strong)";b.style.color=on?"var(--text-accent)":"var(--text-muted)";b.style.opacity=m===3?1:.45;});
+ document.getElementById("dn").textContent=m>=2?"Parentheses show change vs. actual":"Circle area is proportional to volume";
+ const fl=F.filter(d=>val(d)>0&&(cvp||d.s!=="cv")).slice().sort((a,b)=>val(b)-val(a));
+ let s='<svg width="100%" viewBox="0 0 680 690" role="img"><title>Schematic water flow diagram</title><desc>Octilinear transit-style map; line width proportional to flow, terminus circle area proportional to use and colored by user type.</desc>';
+ fl.forEach(d=>{const w=Math.max(val(d)*.0031,1.6);
+  s+=`<path d="${rp(d.p,16)}" fill="none" stroke="${C[d.s]}" stroke-width="${w.toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>`;});
+ fl.forEach(d=>{const w=Math.max(val(d)*.0031,1.6),z=Math.min(Math.max(w*.35,2.5),6),sw=Math.min(Math.max(w*.13,1),2.2);
+  (d.p.length>2?[.3,.72]:[.55]).forEach(q=>{const a=at(d.p,q);
+   s+=`<path d="M${-z} ${-z}L0 0L${-z} ${z}" fill="none" stroke="var(--surface-2)" stroke-width="${sw.toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" transform="translate(${a[0].toFixed(1)} ${a[1].toFixed(1)}) rotate(${a[2].toFixed(1)})"/>`;});});
+ s+=`<circle cx="540" cy="180" r="5" fill="${T.o[0]}" stroke="${T.o[1]}" stroke-width="1.4"${T.o[2]}/>`;
+ D.forEach(n=>{const v=nval(n);if(!v)return;const t=T[n[7]];
+  s+=`<circle cx="${n[1]}" cy="${n[2]}" r="${R(v).toFixed(1)}" fill="${t[0]}" stroke="${t[1]}" stroke-width="1.5"${t[2]}/>`;});
+ D.forEach(n=>{const v=nval(n);if(!v)return;
+  s+=`<text x="${n[1]+n[5]}" y="${n[2]+n[6]}" text-anchor="${n[4]}" font-size="12" fill="var(--text-primary)">${n[0]}</text>`;
+  s+=`<text x="${n[1]+n[5]}" y="${n[2]+n[6]+13}" text-anchor="${n[4]}" font-size="11" fill="var(--text-muted)">${fv(v,n[3][1])}</text>`;});
+ if(m===1)s+=`<text x="554" y="176" font-size="12" fill="var(--text-primary)">Left in storage</text><text x="554" y="190" font-size="11" fill="var(--text-muted)">0.38 maf</text>`;
+ s+=`<text x="128" y="76" text-anchor="end" font-size="11" fill="var(--text-secondary)">Feather R.</text>`;
+ s+=`<text x="212" y="76" font-size="11" fill="var(--text-secondary)">Sacramento R.</text>`;
+ s+=`<text x="640" y="44" text-anchor="end" font-size="11" fill="var(--text-secondary)">Colorado River</text>`;
+ const la=val(F.find(o=>o.k==="laa")),hh=val(F.find(o=>o.k==="hh"));
+ s+=`<text x="420" y="126" text-anchor="middle" font-size="11" fill="var(--text-secondary)">LA Aqueduct</text><text x="420" y="139" text-anchor="middle" font-size="11" fill="var(--text-muted)">${la?fv(la,185):"retired"}</text>`;
+ s+=`<text x="332" y="196" font-size="11" fill="var(--text-secondary)">Hetch Hetchy</text><text x="332" y="209" font-size="11" fill="var(--text-muted)">${hh?fv(hh,190):"retired"}</text>`;
+ document.getElementById("map").innerHTML=s+"</svg>";
+ const sum=k=>D.filter(n=>n[7]===k).reduce((a,n)=>a+nval(n),0);
+ const ag=sum("a"),ur=sum("u"),ot=sum("o")+(m===1?380:0),tot=ag+ur+ot;
+ const cra=val(F.find(o=>o.k==="cra"));
+ const cr=[["Agriculture",Math.round(ag/tot*100)+"%",f(ag)],["Urban",Math.round(ur/tot*100)+"%",f(ur)],["Environment",Math.round(ot/tot*100)+"%",f(ot)],["CRA loading",Math.round(cra/1200*100)+"%",f(cra)+" in a 1.2 maf aqueduct"]];
+ document.getElementById("st").innerHTML=cr.map(c=>`<div style="background:var(--surface-1);border-radius:var(--radius);padding:1rem"><p style="font-size:13px;color:var(--text-secondary);margin:0 0 4px">${c[0]}</p><p style="font-size:24px;font-weight:500;margin:0">${c[1]}</p><p style="font-size:12px;color:var(--text-muted);margin:4px 0 0">${c[2]}</p></div>`).join("");
+}
+document.querySelectorAll(".mb").forEach(b=>b.onclick=()=>{m=+b.dataset.m;draw();});
+document.getElementById("tla").onclick=()=>{LA=LA?0:1;draw();};
+document.getElementById("thh").onclick=()=>{HH=HH?0:1;draw();};
+document.getElementById("bc").onclick=e=>{cvp=!cvp;e.target.textContent=cvp?"Hide CVP":"Show CVP";draw();};
+draw();
+</script>
+</main></body></html>
